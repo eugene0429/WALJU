@@ -1,0 +1,286 @@
+# =============================================================================
+# Nav2 + NVBlox Navigation Parameters for DATASET MODE
+# - use_sim_time: False (no simulation clock)
+# - Simplified TF tree for dataset playback
+# =============================================================================
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: False
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ['navigate_to_pose', 'navigate_through_poses']
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+
+controller_server:
+  ros__parameters:
+    use_sim_time: False
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    odom_topic: /odom
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+
+    # DWB Controller
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: True
+      min_vel_x: 0.0
+      min_vel_y: 0.0
+      max_vel_x: 0.5
+      max_vel_y: 0.0
+      max_vel_theta: 1.5
+      min_speed_xy: 0.0
+      max_speed_xy: 0.5
+      min_speed_theta: 0.0
+      acc_lim_x: 2.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 3.2
+      decel_lim_x: -2.5
+      decel_lim_y: 0.0
+      decel_lim_theta: -3.2
+      vx_samples: 20
+      vy_samples: 1
+      vtheta_samples: 20
+      sim_time: 1.7
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      transform_tolerance: 1.0
+      xy_goal_tolerance: 0.25
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: True
+      stateful: True
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
+
+# =============================================================================
+# LOCAL COSTMAP - NvbloxCostmapLayer
+# Dataset mode: map frame 사용 (odom이 없음)
+# =============================================================================
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      # Dataset mode: odom 대신 map 사용 (static TF)
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: False
+      rolling_window: true
+      width: 10
+      height: 10
+      resolution: 0.05
+      # Dataset mode: TF가 느릴 수 있으므로 tolerance 증가
+      transform_tolerance: 1.0
+      footprint: "[[0.5, 0.33], [0.5, -0.33], [-0.5, -0.33], [-0.5, 0.33]]"
+      always_send_full_costmap: True
+      
+      plugins: ["nvblox_layer", "inflation_layer"]
+      
+      nvblox_layer:
+        plugin: "nvblox::nav2::NvbloxCostmapLayer"
+        enabled: True
+        # Dataset mode: slice frame은 map, costmap global_frame도 map
+        nav2_costmap_global_frame: map
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
+        convert_to_binary_costmap: False
+        max_obstacle_distance: 2.5
+        # 로버 footprint 대각선 + 여유 (0.8m)
+        inflation_distance: 0.8
+        max_cost_value: 252
+        
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: True
+        cost_scaling_factor: 1.0
+        inflation_radius: 1.0
+
+# =============================================================================
+# GLOBAL COSTMAP - NvbloxCostmapLayer
+# =============================================================================
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: False
+      transform_tolerance: 1.0
+      footprint: "[[0.5, 0.33], [0.5, -0.33], [-0.5, -0.33], [-0.5, 0.33]]"
+      
+      rolling_window: true
+      width: 50
+      height: 50
+      resolution: 0.05
+      track_unknown_space: true
+      always_send_full_costmap: True
+      
+      plugins: ["nvblox_layer", "inflation_layer"]
+      
+      nvblox_layer:
+        plugin: "nvblox::nav2::NvbloxCostmapLayer"
+        enabled: True
+        nav2_costmap_global_frame: map
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
+        # Binary 모드 비활성화: 거리 기반 그라디언트로 footprint 고려
+        convert_to_binary_costmap: False
+        max_obstacle_distance: 2.5
+        inflation_distance: 0.8
+        max_cost_value: 252
+        
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: True
+        cost_scaling_factor: 0.5
+        inflation_radius: 1.2
+
+planner_server:
+  ros__parameters:
+    use_sim_time: False
+    expected_planner_frequency: 20.0
+    planner_plugins: ["GridBased"]
+    GridBased:
+      # SmacPlanner2D: footprint 기반 collision checking 수행
+      plugin: "nav2_smac_planner::SmacPlanner2D"
+      tolerance: 0.5
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      # cost_travel_multiplier: 높을수록 높은 비용 영역 회피
+      cost_travel_multiplier: 5.0
+      # INSCRIBED(252)도 회피하도록 lethal_cost를 252로 설정
+      lethal_cost: 252
+      allow_reverse_expansion: false
+      smooth_path: true
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: False
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: False
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors::AssistedTeleop"
+    local_frame: map
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 1.0
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: False
+    loop_rate: 20
+    stop_on_failure: false
+    action_server_result_timeout: 900.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      waypoint_pause_duration: 200
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: False
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.5, 0.0, 1.5]
+    min_velocity: [-0.5, 0.0, -1.5]
+    max_accel: [2.5, 0.0, 3.2]
+    max_decel: [-2.5, 0.0, -3.2]
+    odom_topic: /odom
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+    closed_loop: False
+
+route_server:
+  ros__parameters:
+    use_sim_time: False
+
+opennav_docking:
+  ros__parameters:
+    use_sim_time: False
+    controller_frequency: 50.0
+    initial_perception_timeout: 5.0
+    wait_charge_timeout: 5.0
+    dock_approach_timeout: 30.0
+    undock_linear_tolerance: 0.05
+    undock_angular_tolerance: 0.1
+    max_retries: 3
+    base_frame: "base_link"
+    fixed_frame: "map"
+    dock_backwards: false
+    dock_prestaging_tolerance: 0.5
+    dock_plugins: []
+    docks: []
+
+lifecycle_manager:
+  ros__parameters:
+    use_sim_time: False
+    autostart: True
+    node_names: ['controller_server', 'smoother_server', 'planner_server',
+                 'behavior_server', 'bt_navigator', 'waypoint_follower',
+                 'velocity_smoother']
+    bond_timeout: 4.0
+    attempt_respawn_reconnection: True
+    bond_respawn_max_duration: 10.0

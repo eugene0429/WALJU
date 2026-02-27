@@ -1,0 +1,64 @@
+# Nav2 Costmap Configuration with nvblox Layer
+# This configuration uses nvblox's ESDF slice as the costmap
+#
+# TF Requirements:
+#   Dataset mode: map -> camera_link (from SLAM)
+#   Sim mode: map -> odom -> base_link -> camera_link
+#
+# Using camera_link as robot_base_frame works for both modes
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: map
+      robot_base_frame: camera_link
+      rolling_window: true
+      width: 10
+      height: 10
+      resolution: 0.05
+      robot_radius: 0.3
+      plugins: ["nvblox_layer", "inflation_layer"]
+      
+      nvblox_layer:
+        plugin: "nvblox::nav2::NvbloxCostmapLayer"
+        enabled: true
+        nav2_costmap_global_frame: "map"
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
+        convert_to_binary_costmap: false
+        max_obstacle_distance: 1.0
+        inflation_distance: 0.5
+        max_cost_value: 252
+        
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: camera_link
+      robot_radius: 0.3
+      resolution: 0.05
+      track_unknown_space: true
+      plugins: ["nvblox_layer", "inflation_layer"]
+      
+      nvblox_layer:
+        plugin: "nvblox::nav2::NvbloxCostmapLayer"
+        enabled: true
+        nav2_costmap_global_frame: "map"
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
+        convert_to_binary_costmap: false
+        max_obstacle_distance: 1.0
+        inflation_distance: 0.5
+        max_cost_value: 252
+        
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55

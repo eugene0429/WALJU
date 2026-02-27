@@ -1,0 +1,120 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+
+Visualization Manager:
+  Class: ""
+  Displays:
+    # TF
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          camera_link:
+            {}
+      Update Interval: 0
+
+    # Robot Pose
+    - Class: rviz_default_plugins/Odometry
+      Enabled: true
+      Name: SLAM Odom
+      Topic:
+        Value: /slam/odom
+      Position Tolerance: 0.1
+      Angle Tolerance: 0.1
+      Keep: 100
+      Shape:
+        Value: Arrow
+
+    # Depth Image
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Depth Visualization
+      Topic:
+        Value: /depth/image/viz
+      Queue Size: 2
+
+    # nvblox Mesh
+    - Class: nvblox_rviz_plugin/NvbloxMesh
+      Enabled: true
+      Name: nvblox Mesh
+      Topic:
+        Value: /nvblox_node/mesh
+      Cut Ceiling: false
+      Ceiling Height: 2.0
+
+    # ESDF Slice (2D)
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: ESDF Pointcloud
+      Topic:
+        Value: /nvblox_node/static_esdf_pointcloud
+      Size (m): 0.05
+      Color Transformer: FlatColor
+      Color: 0; 255; 0
+
+    # Occupancy Grid
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Static Occupancy Grid
+      Topic:
+        Value: /nvblox_node/static_occupancy_grid
+      Alpha: 0.7
+      Color Scheme: map
+      Draw Behind: false
+
+    # Back Projected Depth (Debug)
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: false
+      Name: Back Projected Depth
+      Topic:
+        Value: /nvblox_node/back_projected_depth
+      Size (m): 0.02
+      Color Transformer: AxisColor
+      Axis: Z
+      
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 20
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 0.5
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.5
+    Saved: ~

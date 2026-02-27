@@ -1,0 +1,95 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Isaac Sim Stereo Camera Configuration (512x512 - for denoised images)
+# Camera intrinsics scaled: fx=fy=460.8, cx=cy=256, baseline=0.4m
+#--------------------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------------------
+# System config
+#--------------------------------------------------------------------------------------------
+
+#System.LoadAtlasFromFile: "Session_IsaacSim_Stereo_512"
+#System.SaveAtlasToFile: "Session_IsaacSim_Stereo_512"
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+Camera.type: "PinHole"
+
+# Left Camera calibration and distortion parameters (OpenCV)
+# Scaled from 1024x1024: fx=fy=921.6/2=460.8, cx=cy=512/2=256
+Camera1.fx: 460.8
+Camera1.fy: 460.8
+Camera1.cx: 256.0
+Camera1.cy: 256.0
+
+# Distortion coefficients (k1, k2, p1, p2, k3)
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.p1: 0.0
+Camera1.p2: 0.0
+
+# Right Camera calibration (same as left for rectified stereo)
+Camera2.fx: 460.8
+Camera2.fy: 460.8
+Camera2.cx: 256.0
+Camera2.cy: 256.0
+
+Camera2.k1: 0.0
+Camera2.k2: 0.0
+Camera2.p1: 0.0
+Camera2.p2: 0.0
+
+# Image resolution (512x512 for denoised images)
+Camera.width: 512
+Camera.height: 512
+
+# Camera frames per second
+Camera.fps: 30
+
+# Color order of the images (0: BGR, 1: RGB)
+Camera.RGB: 1
+
+# Stereo baseline times fx (for depth computation)
+# baseline = 0.4m, bf = baseline * fx = 0.4 * 460.8 = 184.32
+Stereo.ThDepth: 40.0
+
+# Transformation from left to right camera
+# Baseline = 0.4m
+Stereo.T_c1_c2: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [1.0, 0.0, 0.0, -0.4,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0]
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# Increased features for better tracking robustness
+ORBextractor.nFeatures: 1500
+
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 15
+ORBextractor.minThFAST: 5
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0

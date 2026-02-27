@@ -1,0 +1,46 @@
+# ORB-SLAM3 ROS2 Stereo Node Configuration for LuSNAR Dataset
+# 
+# Usage:
+#   ros2 launch orb_slam3_ros2 dataset_test.launch.py
+
+stereo_slam_node:
+  ros__parameters:
+    # ORB-SLAM3 paths
+    vocabulary_path: "~/WALJU/deps/ORB_SLAM3/Vocabulary/ORBvoc.txt"
+    settings_path: "~/WALJU/deps/ORB_SLAM3/Examples/Stereo/Custom.yaml"
+    
+    # Topics
+    left_topic: "/stereo/left/image_raw"
+    right_topic: "/stereo/right/image_raw"
+    
+    # Coordinate transformation
+    # Camera tilt angle in degrees (adjust based on camera mounting)
+    camera_tilt_deg: 70.077
+    
+    # Frame IDs
+    output_frame_id: "map"
+    camera_frame_id: "camera_link"
+    
+    # ORB-SLAM3 options
+    enable_viewer: true
+    
+    # Optional: GT file for initial pose alignment
+    gt_file_path: "~/WALJU/data/LuSNAR/Moon_2/gt.txt"
+    
+    # Optional: Output trajectory file (TUM format)
+    output_trajectory_file: "~/WALJU/deps/ORB_SLAM3/ros2_trajectory.txt"
+
+dataset_publisher:
+  ros__parameters:
+    # Dataset paths
+    dataset_path: "~/WALJU/data/LuSNAR/Moon_2"
+    left_subdir: "image0/color"
+    right_subdir: "image1/color"
+    
+    # Publishing options
+    publish_rate: 10.0  # Hz
+    loop: false
+    start_index: 0
+    
+    # Frame ID
+    frame_id: "camera_link"

@@ -1,0 +1,240 @@
+# stereo left
+
+header:
+  stamp:
+    sec: 637
+    nanosec: 50033224
+  frame_id: stereo_left
+height: 1024
+width: 1024
+distortion_model: plumb_bob
+d:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+k:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 1.0
+r:
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+p:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+binning_x: 0
+binning_y: 0
+roi:
+  x_offset: 0
+  y_offset: 0
+  height: 0
+  width: 0
+  do_rectify: false
+---
+
+
+# stereo right
+
+header:
+  stamp:
+    sec: 687
+    nanosec: 733369201
+  frame_id: stereo_right
+height: 1024
+width: 1024
+distortion_model: plumb_bob
+d:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+k:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 1.0
+r:
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+p:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+binning_x: 0
+binning_y: 0
+roi:
+  x_offset: 0
+  y_offset: 0
+  height: 0
+  width: 0
+  do_rectify: false
+---
+
+
+# depth camera
+
+
+---
+header:
+  stamp:
+    sec: 713
+    nanosec: 150037193
+  frame_id: Camera_Pseudo_Depth
+height: 1024
+width: 1024
+distortion_model: plumb_bob
+d:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+k:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 1.0
+r:
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+p:
+- 921.6
+- 0.0
+- 512.0
+- 0.0
+- 0.0
+- 921.6
+- 512.0
+- 0.0
+- 0.0
+- 0.0
+- 1.0
+- 0.0
+binning_x: 0
+binning_y: 0
+roi:
+  x_offset: 0
+  y_offset: 0
+  height: 0
+  width: 0
+  do_rectify: false
+---
+
+
+# stereo left transform
+
+- header:
+    stamp:
+      sec: 732
+      nanosec: 733371548
+    frame_id: base_link
+  child_frame_id: Camera_OmniVision_OV9782_Left
+  transform:
+    translation:
+      x: 0.48000016808509827
+      y: 0.20000022649765015
+      z: 1.1450707912445068
+    rotation:
+      x: 0.5792280435562134
+      y: -0.5792280435562134
+      z: 0.4055798053741455
+      w: -0.4055798053741455
+
+# stereo right transform
+
+- header:
+    stamp:
+      sec: 732
+      nanosec: 733371548
+    frame_id: base_link
+  child_frame_id: Camera_OmniVision_OV9782_Right
+  transform:
+    translation:
+      x: 0.4800000488758087
+      y: -0.19999973475933075
+      z: 1.1450707912445068
+    rotation:
+      x: 0.5792280435562134
+      y: -0.5792280435562134
+      z: 0.4055798053741455
+      w: -0.4055798053741455
+
+
+# depth camera transform
+
+- header:
+    stamp:
+      sec: 732
+      nanosec: 733371548
+    frame_id: base_link
+  child_frame_id: Camera_Pseudo_Depth
+  transform:
+    translation:
+      x: 0.48000016808509827
+      y: 0.20000022649765015
+      z: 1.1450707912445068
+    rotation:
+      x: 0.5792280435562134
+      y: -0.5792280435562134
+      z: 0.4055798053741455
+      w: -0.4055798053741455
+

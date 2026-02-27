@@ -1,0 +1,28 @@
+foundation_stereo_depth_node:
+  ros__parameters:
+    # Topic names
+    left_topic: "/stereo/left/image_raw"
+    right_topic: "/stereo/right/image_raw"
+    depth_topic: "/depth/image"
+    
+    # FoundationStereo path (must contain core/, pretrained_models/, etc.)
+    foundation_stereo_path: "~/WALJU/deps/FoundationStereo"
+    
+    # Model configuration (leave empty to use default: 11-33-40/model_best_bp2.pth)
+    model_path: ""
+    
+    # Camera intrinsics file (K matrix + baseline)
+    intrinsic_file: "~/WALJU/data/LuSNAR/K.txt"
+    
+    # Inference settings
+    scale: 0.5          # Downscale factor (0.5 = half resolution, faster)
+    valid_iters: 32     # Refinement iterations (lower = faster, less accurate)
+    use_hiera: false    # Hierarchical inference for high-res images (>1K)
+    z_far: 20.0         # Max depth to clip (meters) - farther depths set to 0
+    
+    # Frame processing mode
+    skip_frames_during_processing: true  # true: skip frames during inference (always latest)
+                                         # false: queue frames and process sequentially
+    
+    # Visualization settings
+    enable_visualization: true   # Show real-time depth visualization

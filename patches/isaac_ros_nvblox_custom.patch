@@ -1,0 +1,267 @@
+diff --git a/nvblox_nav2/include/nvblox_nav2/nvblox_costmap_layer.hpp b/nvblox_nav2/include/nvblox_nav2/nvblox_costmap_layer.hpp
+index 56df541..ff29084 100644
+--- a/nvblox_nav2/include/nvblox_nav2/nvblox_costmap_layer.hpp
++++ b/nvblox_nav2/include/nvblox_nav2/nvblox_costmap_layer.hpp
+@@ -23,6 +23,7 @@
+ #include <tf2_ros/transform_listener.h>
+ #include <string>
+ #include <memory>
++#include <mutex>
+ #include <nav2_costmap_2d/costmap_layer.hpp>
+ #include <nav2_costmap_2d/layer.hpp>
+ #include <nav2_costmap_2d/layered_costmap.hpp>
+@@ -56,7 +57,9 @@ public:
+     const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice);
+ 
+ private:
+-  bool lookupInSlice(const Eigen::Vector2f & pos, float * distance);
++  bool lookupInSlice(
++    const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr & slice,
++    const Eigen::Vector2f & pos, float * distance);
+ 
+   // Settings
+   bool convert_to_binary_costmap_ = false;
+@@ -69,7 +72,8 @@ private:
+   rclcpp::Subscription<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+     slice_sub_;
+ 
+-  // State
++  // State (protected by slice_mutex_)
++  mutable std::mutex slice_mutex_;
+   nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice_;
+ 
+   // Global frame of the nav2 costmap.
+diff --git a/nvblox_nav2/src/nvblox_costmap_layer.cpp b/nvblox_nav2/src/nvblox_costmap_layer.cpp
+index 79767ba..2058624 100644
+--- a/nvblox_nav2/src/nvblox_costmap_layer.cpp
++++ b/nvblox_nav2/src/nvblox_costmap_layer.cpp
+@@ -80,19 +80,28 @@ void NvbloxCostmapLayer::updateBounds(
+   double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/,
+   double * min_x, double * min_y, double * max_x, double * max_y)
+ {
++  // Thread-safe: take a local copy of the shared state
++  nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr local_slice;
++  Eigen::Isometry2f local_T_G_S;
++  {
++    std::lock_guard<std::mutex> lock(slice_mutex_);
++    local_slice = slice_;
++    local_T_G_S = T_G_S_;
++  }
++
+   // We give the full AABB of the map that we have available to the
+   // upstream controller.
+   // According to nav2 the bounds can only grow bigger. So we only update the
+   // bounds if it grows bigger or we keep the old values
+-  if (slice_ != nullptr) {
+-    double current_plugin_min_x = slice_->origin.x;
+-    double current_plugin_min_y = slice_->origin.y;
+-    double current_plugin_max_x = current_plugin_min_x + slice_->width * slice_->resolution;
+-    double current_plugin_max_y = current_plugin_min_y + slice_->height * slice_->resolution;
++  if (local_slice != nullptr) {
++    double current_plugin_min_x = local_slice->origin.x;
++    double current_plugin_min_y = local_slice->origin.y;
++    double current_plugin_max_x = current_plugin_min_x + local_slice->width * local_slice->resolution;
++    double current_plugin_max_y = current_plugin_min_y + local_slice->height * local_slice->resolution;
+ 
+     // If the slice is not in the nav2 costmap global frame,
+     // we need to convert the bounds.
+-    if (!T_G_S_.matrix().isIdentity()) {
++    if (!local_T_G_S.matrix().isIdentity()) {
+       // Define the a matrix containg the corners of the bounds in the slice frame.
+       Eigen::Matrix<float, 2, 4> corners_S;
+       corners_S << current_plugin_min_x, current_plugin_min_x, current_plugin_max_x,
+@@ -100,7 +109,7 @@ void NvbloxCostmapLayer::updateBounds(
+         current_plugin_max_y;
+ 
+       // Convert the corners to the nav2_costmap_global_frame.
+-      Eigen::Matrix<float, 2, 4> corners_G = (T_G_S_ * corners_S.colwise().homogeneous());
++      Eigen::Matrix<float, 2, 4> corners_G = (local_T_G_S * corners_S.colwise().homogeneous());
+ 
+       // Get the max/min x/y bounds in the slice frame
+       current_plugin_min_x = corners_G.row(0).minCoeff();
+@@ -146,6 +155,15 @@ void NvbloxCostmapLayer::updateCosts(
+     return;
+   }
+ 
++  // Thread-safe: take a local copy of the shared state
++  nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr local_slice;
++  Eigen::Isometry2f local_T_G_S;
++  {
++    std::lock_guard<std::mutex> lock(slice_mutex_);
++    local_slice = slice_;
++    local_T_G_S = T_G_S_;
++  }
++
+   auto node = node_.lock();
+   if (!node) {
+     throw std::runtime_error{"Failed to lock node"};
+@@ -174,11 +192,11 @@ void NvbloxCostmapLayer::updateCosts(
+ 
+       // Transform the pose from nav2 costmap global frame to the slice frame.
+       Eigen::Vector2f pos_G(world_x, world_y);
+-      Eigen::Vector2f pos_S = T_G_S_.inverse() * pos_G;
++      Eigen::Vector2f pos_S = local_T_G_S.inverse() * pos_G;
+ 
+       // Look up the corresponding cell in our latest slice.
+       float distance = 0.0f;
+-      bool valid = lookupInSlice(Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
++      bool valid = lookupInSlice(local_slice, Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
+ 
+       // Convert the distance value to a costmap value if valid.
+       uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
+@@ -285,43 +303,51 @@ void NvbloxCostmapLayer::sliceCallback(
+     }
+ 
+     // Update the 2d transform
+-    T_G_S_ =
+-      Eigen::Isometry2f(
+-      Eigen::Translation2f(T_G_S_msg.translation.x, T_G_S_msg.translation.y) *
+-      Eigen::Rotation2Df(azimuth_angle_rad));
++    {
++      std::lock_guard<std::mutex> lock(slice_mutex_);
++      T_G_S_ =
++        Eigen::Isometry2f(
++        Eigen::Translation2f(T_G_S_msg.translation.x, T_G_S_msg.translation.y) *
++        Eigen::Rotation2Df(azimuth_angle_rad));
++    }
+   }
+ 
+   RCLCPP_DEBUG(node->get_logger(), "Slice callback.");
+-  slice_ = slice;
++  {
++    std::lock_guard<std::mutex> lock(slice_mutex_);
++    slice_ = slice;
++  }
+ }
+ 
+-bool NvbloxCostmapLayer::lookupInSlice(const Eigen::Vector2f & pos, float * distance)
++bool NvbloxCostmapLayer::lookupInSlice(
++  const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr & slice,
++  const Eigen::Vector2f & pos, float * distance)
+ {
+   // If we don't have any slice, we don't have any costs. :(
+-  if (slice_ == nullptr) {
++  if (slice == nullptr) {
+     return false;
+   }
+ 
+   // Else look up in the actual slice.
+   Eigen::Vector2f scaled_position =
+-    (pos - Eigen::Vector2f(slice_->origin.x, slice_->origin.y)) / slice_->resolution;
++    (pos - Eigen::Vector2f(slice->origin.x, slice->origin.y)) / slice->resolution;
+   Eigen::Vector2i pos_index = scaled_position.array().round().cast<int>();
+ 
+-  if (pos_index.x() < 0 || pos_index.x() >= static_cast<int>(slice_->width) || pos_index.y() < 0 ||
+-    pos_index.y() >= static_cast<int>(slice_->height))
++  if (pos_index.x() < 0 || pos_index.x() >= static_cast<int>(slice->width) || pos_index.y() < 0 ||
++    pos_index.y() >= static_cast<int>(slice->height))
+   {
+     return false;
+   }
+ 
+-  size_t linear_index = pos_index.y() * slice_->width + pos_index.x();
++  size_t linear_index = pos_index.y() * slice->width + pos_index.x();
+ 
+-  if (linear_index >= slice_->width * slice_->height) {
++  if (linear_index >= slice->width * slice->height) {
+     return false;
+   }
+ 
+-  *distance = slice_->data[linear_index];
++  *distance = slice->data[linear_index];
+   // The value can still be allocated but unknown. Handle this case too.
+-  if (*distance != slice_->unknown_value) {
++  if (*distance != slice->unknown_value) {
+     return true;
+   }
+   return false;
+diff --git a/nvblox_ros/include/nvblox_ros/layer_publishing.hpp b/nvblox_ros/include/nvblox_ros/layer_publishing.hpp
+index a8ae9a8..7f35a92 100644
+--- a/nvblox_ros/include/nvblox_ros/layer_publishing.hpp
++++ b/nvblox_ros/include/nvblox_ros/layer_publishing.hpp
+@@ -75,6 +75,9 @@ private:
+ 
+   // Cache the last known number of subscribers.
+   size_t mesh_subscriber_count_ = 0;
++  
++  // Flag to indicate if we should send the full mesh on next publish
++  bool send_full_mesh_on_next_publish_ = false;
+ 
+   // Params
+   float min_tsdf_weight_ = 0;
+diff --git a/nvblox_ros/src/lib/layer_publishing.cpp b/nvblox_ros/src/lib/layer_publishing.cpp
+index 5d45a48..82bfb3a 100644
+--- a/nvblox_ros/src/lib/layer_publishing.cpp
++++ b/nvblox_ros/src/lib/layer_publishing.cpp
+@@ -548,16 +548,7 @@ void LayerPublisher::publishMesh(
+   const std::string & frame_id, const rclcpp::Time & timestamp,
+   const rclcpp::Logger & logger)
+ {
+-  bool serialize_full_mesh = false;
+-  size_t new_subscriber_count = mesh_publisher_->get_subscription_count();
+-
+-  // In case we have new subscribers, publish the ENTIRE map once.
+   nvblox_msgs::msg::Mesh mesh_msg;
+-  if (new_subscriber_count > mesh_subscriber_count_) {
+-    RCLCPP_INFO(logger, "Got a new subscriber, sending entire map.");
+-    serialize_full_mesh = true;
+-  }
+-  mesh_subscriber_count_ = new_subscriber_count;
+ 
+   RCLCPP_DEBUG_STREAM(
+     logger, "Num of streamed mesh blocks: "
+@@ -574,12 +565,20 @@ void LayerPublisher::publishMesh(
+ 
+     // Publish mesh blocks from serialized mesh
+     if (!serialized_mesh->block_indices.empty()) {
+-      const bool resend_full_mesh = serialize_full_mesh;
++      // Use the flag set in serializeAndpublishSubscribedLayers
++      const bool resend_full_mesh = send_full_mesh_on_next_publish_;
+       conversions::meshMessageFromSerializedMesh(
+         serialized_mesh, timestamp,
+         frame_id, block_size,
+         resend_full_mesh, &mesh_msg);
+       mesh_publisher_->publish(mesh_msg);
++      
++      // Reset the flag after publishing
++      if (send_full_mesh_on_next_publish_) {
++        RCLCPP_INFO(logger, "Published full mesh with %zu blocks, clearing flag.",
++                    serialized_mesh->block_indices.size());
++        send_full_mesh_on_next_publish_ = false;
++      }
+     }
+   }
+ }
+@@ -683,6 +682,14 @@ void LayerPublisher::serializeAndpublishSubscribedLayers(
+   CHECK_NOTNULL(static_mapper);
+   LayerTypeBitMask layers_to_stream = getLayersToStreamBitMask();
+ 
++  // Check for new mesh subscribers - if so, we need to send the ENTIRE mesh
++  size_t new_mesh_subscriber_count = mesh_publisher_->get_subscription_count();
++  if (new_mesh_subscriber_count > mesh_subscriber_count_) {
++    RCLCPP_INFO(logger, "Got a new mesh subscriber, will send entire mesh layer.");
++    send_full_mesh_on_next_publish_ = true;
++  }
++  mesh_subscriber_count_ = new_mesh_subscriber_count;
++
+   /// Mesh is only computed when we're serializing
+   if (layers_to_stream & LayerType::kColorMesh) {
+     static_mapper->updateColorMesh();
+@@ -706,9 +713,16 @@ void LayerPublisher::serializeAndpublishSubscribedLayers(
+     .block_size_m = static_mapper->tsdf_layer().block_size(),
+   };
+ 
++  // If we have a new subscriber, serialize ALL mesh blocks instead of just updated ones
++  std::optional<std::vector<Index3D>> blocks_to_serialize_opt = std::nullopt;
++  if (send_full_mesh_on_next_publish_ && (layers_to_serialize & LayerType::kColorMesh)) {
++    blocks_to_serialize_opt = static_mapper->color_mesh_layer().getAllBlockIndices();
++    RCLCPP_INFO(logger, "Sending full mesh with %zu blocks", blocks_to_serialize_opt->size());
++  }
++
+   static_mapper->serializeSelectedLayers(
+     layers_to_serialize, layer_streamer_bandwidth_limit_mbps,
+-    block_exclusion_params);
++    block_exclusion_params, blocks_to_serialize_opt);
+ 
+   serialize_timer.Stop();
+ 

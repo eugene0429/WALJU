@@ -1,0 +1,153 @@
+# nvblox configuration for custom SLAM + Depth pipeline
+# Designed for: ORB-SLAM3 pose + FoundationStereo depth -> nvblox TSDF/ESDF
+
+/**:
+  ros__parameters:
+    # ============================================
+    # CUDA Stream Settings
+    # ============================================
+    cuda_stream_type: 1  # 1: blocking async stream (recommended)
+
+    # ============================================
+    # Basic Settings
+    # ============================================
+    voxel_size: 0.05           # TSDF voxel size in meters (5cm)
+    num_cameras: 1             # Single depth camera
+    global_frame: "map"        # Global frame from SLAM
+    pose_frame: "camera_link"  # Camera frame
+    
+    # Use TF transforms (ORB-SLAM3 broadcasts TF: map -> camera_link)
+    use_tf_transforms: true
+    
+    # Mapping type
+    mapping_type: "static_tsdf"  # Static environment mapping
+
+    # ============================================
+    # Processing Rates
+    # ============================================
+    tick_period_ms: 10
+    integrate_depth_rate_hz: 10.0    # Match our depth node rate (~3 FPS from dataset)
+    integrate_color_rate_hz: 10.0    # MUST match depth rate for consistent color integration!
+    integrate_lidar_rate_hz: 0.0     # No lidar
+    update_mesh_rate_hz: 5.0         # Mesh update rate
+    update_esdf_rate_hz: 5.0         # Match mesh rate to reduce ESDF lag
+    publish_layer_rate_hz: 5.0       # Layer publishing rate
+    publish_debug_vis_rate_hz: 1.0
+    decay_tsdf_rate_hz: 0.5          # Reduced: Less aggressive decay to preserve structure
+    clear_map_outside_radius_rate_hz: 0.5
+
+    # ============================================
+    # Input Settings
+    # ============================================
+    use_depth: true
+    use_color: true                  # Enable color integration for textured mesh
+    use_lidar: false                 # No lidar
+
+    # Input queues - KEEP SHORT to minimize latency!
+    # At 1Hz input, queue of 2 = max 2 second delay
+    maximum_input_queue_length: 2
+
+    # QoS settings - use SYSTEM_DEFAULT for reliable delivery
+    input_qos: "SYSTEM_DEFAULT"
+
+    # ============================================
+    # ESDF Settings (for Nav2)
+    # ============================================
+    esdf_mode: "2d"                  # 2D slice for navigation
+    publish_esdf_distance_slice: true
+    
+    # Distance map settings
+    distance_map_unknown_value_optimistic: 1.0
+    distance_map_unknown_value_pessimistic: -1.0
+
+    # ============================================
+    # Map Clearing Settings
+    # ============================================
+    map_clearing_radius_m: 20.0      # Enable map clearing for large environments
+    map_clearing_frame_id: "camera_link"  # Use camera_link instead of base_link
+
+    # ============================================
+    # Visualization Settings
+    # ============================================
+    esdf_slice_bounds_visualization_attachment_frame_id: "camera_link"
+    esdf_slice_bounds_visualization_side_length: 20.0
+    workspace_height_bounds_visualization_attachment_frame_id: "camera_link"
+    workspace_height_bounds_visualization_side_length: 20.0
+    
+    # IMPORTANT: min_weight controls which surfaces get visualized
+    # Higher value = only trusted surfaces (with good color), Lower = more surfaces but noisier
+    layer_visualization_min_tsdf_weight: 0.1    # Original default - only show trusted surfaces
+    layer_visualization_exclusion_height_m: 10.0 # Higher to include all terrain
+    layer_visualization_exclusion_radius_m: 1000.0  # Very large to include ALL blocks
+    layer_visualization_undo_gamma_correction: false
+    
+    # Back projection settings - match z_far
+    max_back_projection_distance: 20.0   # Full z_far range (20m)
+    back_projection_subsampling: 1
+    layer_streamer_bandwidth_limit_mbps: -1.0  # unlimited
+
+    # ============================================
+    # Statistics (for debugging) - Default to quiet mode
+    # ============================================
+    print_rates_to_console: false       # Disable rate printing by default
+    print_timings_to_console: false
+    print_delays_to_console: false
+    print_queue_drops_to_console: false  # Disable queue drop warnings
+    print_statistics_on_console_period_ms: 10000  # Less frequent (10s)
+
+    # ============================================
+    # Multi-Mapper Settings
+    # ============================================
+    multi_mapper:
+      connected_mask_component_size_threshold: 2000
+      remove_small_connected_components: true
+
+    # ============================================
+    # Static Mapper Settings
+    # ============================================
+    static_mapper:
+      # Depth preprocessing - DISABLED (causes crash in some nvblox versions)
+      # If stable, enable for noise reduction via morphological dilation
+      do_depth_preprocessing: false
+      depth_preprocessing_num_dilations: 3
+      
+      # Projective integrator (TSDF)
+      # FoundationStereo has 20m max range - use full range for visualization
+      projective_integrator_max_integration_distance_m: 20.0   # Full depth range (z_far=20m)
+      projective_integrator_truncation_distance_vox: 4.0       # Original default
+      projective_integrator_weighting_mode: "inverse_square_tsdf_distance_penalty"
+      projective_integrator_max_weight: 5.0                    # Original default
+      projective_tsdf_integrator_invalid_depth_decay_factor: -1.0
+      
+      # View calculator
+      raycast_subsampling_factor: 4                            # Original default
+      workspace_bounds_type: "unbounded"
+      
+      # ESDF slice settings are controlled via launch arguments:
+      # --esdf-height, --esdf-min, --esdf-max
+      # Do NOT set esdf_slice_height/min/max here - they will override launch args!
+      
+      # ESDF integrator - Extended range for better visualization
+      # Higher min_weight requires more observations before trusting a surface
+      # This reduces impact of sporadic depth noise/outliers
+      # 0.05=original (noisy), 0.15=conservative (narrow), 0.08=balanced
+      esdf_integrator_min_weight: 0.05   # Balanced: noise reduction without narrowing ESDF too much
+      esdf_integrator_max_site_distance_vox: 8.0   # Larger: smoother ESDF gradient (was 2.0)
+      esdf_integrator_max_distance_m: 20.0         # Extended: match z_far (was 10.0)
+      
+      # Mesh integrator - IMPORTANT for colored mesh
+      # Higher min_weight = more conservative surface creation (less noise)
+      mesh_integrator_min_weight: 0.05   # Balanced: noise reduction without narrowing mesh too much
+      mesh_integrator_weld_vertices: true
+      
+      # TSDF decay - less aggressive
+      tsdf_decay_factor: 0.95             # Original default
+      tsdf_decayed_weight_threshold: 0.001
+      exclude_last_view_from_decay: true
+      tsdf_set_free_distance_on_decayed: false
+      tsdf_decayed_free_distance_vox: 4.0
+      decay_integrator_deallocate_decayed_blocks: true
+      
+      # Mesh streamer - match z_far visualization range
+      layer_streamer_exclusion_height_m: 10.0   # Match height bounds
+      layer_streamer_exclusion_radius_m: 1000.0  # Match layer_visualization_exclusion_radius_m
