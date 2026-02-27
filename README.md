@@ -59,24 +59,24 @@ The pipeline processes stereo camera inputs to perform real-time localization, 3
 ```mermaid
 graph TD
     subgraph Input
-        CAM[Isaac Sim / LuSNAR Dataset] -->|Stereo Images| FS[FoundationStereo]
-        CAM -->|Stereo Images| SLAM[ORB-SLAM3]
+        CAM["Isaac Sim / LuSNAR Dataset"] -->|Stereo Images| FS["FoundationStereo"]
+        CAM -->|Stereo Images| SLAM["ORB-SLAM3"]
     end
 
     subgraph Perception
-        FS -->|/depth/image| NVB[nvblox]
-        SLAM -->|TF: map → camera_link| NVB
+        FS -->|"/depth/image"| NVB["nvblox"]
+        SLAM -->|"TF: map → camera_link"| NVB
     end
 
     subgraph Mapping
-        NVB -->|Colored Mesh| MESH[/nvblox_node/mesh]
-        NVB -->|ESDF Slice| COST[NvbloxCostmapLayer]
+        NVB -->|"Colored Mesh"| MESH["/nvblox_node/mesh"]
+        NVB -->|"ESDF Slice"| COST["NvbloxCostmapLayer"]
     end
 
     subgraph Navigation
-        COST --> NAV2[Nav2 Stack]
-        NAV2 -->|/cmd_vel| ROT[Initial Rotation Controller]
-        ROT -->|/cmd_vel_out| ROBOT[Robot / Simulator]
+        COST --> NAV2["Nav2 Stack"]
+        NAV2 -->|"/cmd_vel"| ROT["Initial Rotation Controller"]
+        ROT -->|"/cmd_vel_out"| ROBOT["Robot / Simulator"]
     end
 ```
 
@@ -339,35 +339,6 @@ WALJU/
 | Depth Map | `--depth-viz` | Colorized depth output from FoundationStereo |
 | Point Cloud | `--pc-viz` | Open3D overlay — predicted (orange) vs ground truth (cyan) |
 | Pose Plot | `--pose-plot` | Matplotlib trajectory comparison (SLAM vs GT) |
-
----
-
-## Debugging
-
-The `debug/` directory contains diagnostic tools:
-
-```bash
-# Monitor velocity commands in real-time
-./debug/monitor_cmd_vel.sh
-
-# Check depth image range and quality
-python3 debug/analyze_depth.py
-
-# Live nvblox status monitoring
-python3 debug/debug_nvblox_live.py
-
-# Full Nav2 stack diagnosis
-./debug/quick_nav2_debug.sh
-```
-
-See [debug/TESTING_GUIDE.md](debug/TESTING_GUIDE.md) for the full debugging reference.
-
-To kill all pipeline processes:
-```bash
-./kill_pipeline.sh
-```
-
----
 
 ## License
 
