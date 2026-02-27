@@ -28,6 +28,10 @@ WALJU is a ROS 2 pipeline that integrates stereo visual SLAM, deep learning-base
 
 The pipeline processes stereo camera inputs to perform real-time localization, 3D mapping, and autonomous navigation. Two operating modes are supported:
 
+<div align="center">
+  <video src="https://private-user-images.githubusercontent.com/159914069/555690790-79017a8c-510f-4b81-adb2-6f9846453f3b.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NzIxNTMxODEsIm5iZiI6MTc3MjE1Mjg4MSwicGF0aCI6Ii8xNTk5MTQwNjkvNTU1NjkwNzkwLTc5MDE3YThjLTUxMGYtNGI4MS1hZGIyLTZmOTg0NjQ1M2YzYi5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwMjI3JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDIyN1QwMDQxMjFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04NTdhZjA5YjkzOGFhY2U3ZmFkZjA0MmUxMDdhOWJiYWRmN2Q2MmIyMmFlMzkxMDg2NGUzNDhiMWU2NjNhNzMzJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.x6nBKU65KtkloVrLN-jvQ-pQeXp_4RiQADsmTlIf3XM" width="100%" controls></video>
+</div>
+
 | Mode | Source | Use Case |
 |------|--------|----------|
 | **Simulation** (`--sim`) | NVIDIA Isaac Sim | Live stereo feed via ROS 2 bridge |
